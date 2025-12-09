@@ -257,7 +257,7 @@ qsub_cmd+=( "${pbs_script}" )
 # If dry-run, print planned commands and paths, then exit without submitting
 if [[ "${dry_run}" == "true" ]]; then
     echo "DRY-RUN: would submit the following qsub command:"
-    printf '%q ' "${qsub_cmd[@]}"; echo
+    printf '%q ' "${qsub_cmd[@]}"; printf '\n'
     echo "DRY-RUN: paths to review:"
     echo " - PBS job script: ${pbs_script}"
     echo " - RUN_DIR: ${run_dir}"
