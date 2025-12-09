@@ -13,7 +13,7 @@
 # - Allows --dry-run mode for submission planning.
 #
 # Required flags:
-#   --cmd                   The nxreduce command line to run, with the input data path represented by '{}', see below.
+#   --cmd CMD               The nxreduce command line to run, with the input data path represented by '{}', see below.
 #
 # Optional flags:
 #   --inputs-file PATH      File listing input data paths, one per line.
