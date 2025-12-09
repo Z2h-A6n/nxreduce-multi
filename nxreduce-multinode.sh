@@ -48,6 +48,9 @@ fi
 mkdir -p "${LOGDIR}" "${STATUSDIR}"
 
 # Create a per-rank worker script that will run on each node
+# Notes:
+# - the `rank` variable is set to the MPI rank, with several levels of fallback
+#   to environment variables defined in different MPI implementations.
 WORKER="${RUN_DIR}/worker.sh"
 cat > "${WORKER}" <<'EOF'
 #!/bin/bash -l
