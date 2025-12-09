@@ -4,12 +4,14 @@
 # - Validates inputs.
 # - Writes an inputs.txt and cmd.txt into a run directory on a shared filesystem.
 # - Submits nxreduce-multinode.sh to PBS with a node count equal to number of inputs.
-#
+
+# TODO: Write proper nxreduce examples
 # Usage examples:
 #   nxreduce-launch.sh --cmd 'nxreduce --server myserver' /path/to/input1 /path/to/input2
 #   nxreduce-launch.sh --cmd 'nxreduce --server myserver' --inputs-file inputs.txt
 #   cat inputs.txt | nxreduce-launch.sh --cmd 'nxreduce --server myserver'
-#
+
+# TODO: Make some of these hard-coded, change some defaults, etc.
 # Optional flags:
 #   --force                 Proceed even if only 1 input is provided.
 #   --queue Q               PBS queue name (default: debug)
@@ -21,7 +23,7 @@
 #   --filesystems FS        Filesystems resource (default: home:eagle)
 #   --runs-dir DIR          Base directory to store run artifacts (default: $PWD/nxreduce_runs)
 #   --max-nodes N           Cap the number of nodes to N (fail if inputs > N)
-#
+
 # Note:
 #   - Ensure you run this from a directory on a shared filesystem (home/eagle) so the compute nodes can access RUN_DIR.
 #   - The command string provided via --cmd should NOT include the final input path; it will be appended by the worker.
@@ -41,88 +43,90 @@ filesystems="home:eagle"
 runs_dir="${PWD}/nxreduce_runs"
 max_nodes=""
 
+# TODO: Make this more robust by relying on something other than hard-coded line numbers.
 print_usage() {
-  sed -n '1,100p' "$0" | sed -n '1,50p' | grep -E '^(#|\s*$)' | sed 's/^#\s*//'
+    sed -n '1,100p' "$0" | sed -n '1,50p' | grep -E '^(#|\s*$)' | sed 's/^#\s*//'
 }
 
 # Parse arguments
 args=()
 while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --cmd)
-      shift
-      cmd="${1:-}"
-      ;;
-    --inputs-file)
-      shift
-      inputs_file="${1:-}"
-      ;;
-    --force)
-      force="true"
-      ;;
-    --queue)
-      shift
-      queue="${1:-}"
-      ;;
-    --walltime)
-      shift
-      walltime="${1:-}"
-      ;;
-    --account)
-      shift
-      account="${1:-}"
-      ;;
-    --name)
-      shift
-      name="${1:-}"
-      ;;
-    --place)
-      shift
-      place="${1:-}"
-      ;;
-    --system)
-      shift
-      system="${1:-}"
-      ;;
-    --filesystems)
-      shift
-      filesystems="${1:-}"
-      ;;
-    --runs-dir)
-      shift
-      runs_dir="${1:-}"
-      ;;
-    --max-nodes)
-      shift
-      max_nodes="${1:-}"
-      ;;
-    -h|--help)
-      print_usage
-      exit 0
-      ;;
-    --)
-      shift
-      # Remaining args are inputs
-      while [[ $# -gt 0 ]]; do
-        args+=("$1")
-        shift
-      done
-      break
-      ;;
-    -*)
-      echo "Unknown option: $1" >&2
-      exit 1
-      ;;
-    *)
-      args+=("$1")
-      ;;
-  esac
-  shift || true
+    case "$1" in
+        --cmd)
+            shift
+            cmd="${1:-}"
+            ;;
+        --inputs-file)
+            shift
+            inputs_file="${1:-}"
+            ;;
+        --force)
+            force="true"
+            ;;
+        --queue)
+            shift
+            queue="${1:-}"
+            ;;
+        --walltime)
+            shift
+            walltime="${1:-}"
+            ;;
+        --account)
+            shift
+            account="${1:-}"
+            ;;
+        --name)
+            shift
+            name="${1:-}"
+            ;;
+        --place)
+            shift
+            place="${1:-}"
+            ;;
+        --system)
+            shift
+            system="${1:-}"
+            ;;
+        --filesystems)
+            shift
+            filesystems="${1:-}"
+            ;;
+        --runs-dir)
+            shift
+            runs_dir="${1:-}"
+            ;;
+        --max-nodes)
+            shift
+            max_nodes="${1:-}"
+            ;;
+        -h | --help)
+            print_usage
+            exit 0
+            ;;
+        --)
+            shift
+            # Remaining args are inputs
+            while [[ $# -gt 0 ]]; do
+                args+=("$1")
+                shift
+            done
+            break
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+        *)
+            args+=("$1")
+            ;;
+    esac
+    shift || true
 done
 
 if [[ -z "${cmd}" ]]; then
-  echo "ERROR: --cmd 'your_command and options (without the input path)\' is required." >&2
-  exit 1
+    # TODO: the `\` seems like a problem (or at least unnecessary). Remove it?
+    echo "ERROR: --cmd 'your_command and options (without the input path)\' is required." >&2
+    exit 1
 fi
 
 # Collect inputs
@@ -130,65 +134,65 @@ inputs=()
 
 # From file, if provided
 if [[ -n "${inputs_file}" ]]; then
-  if [[ ! -f "${inputs_file}" ]]; then
-    echo "ERROR: Inputs file not found: ${inputs_file}" >&2
-    exit 1
-  fi
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    [[ "$line" =~ ^# ]] && continue
-    inputs+=("$line")
-  done < "${inputs_file}"
+    if [[ ! -f "${inputs_file}" ]]; then
+        echo "ERROR: Inputs file not found: ${inputs_file}" >&2
+        exit 1
+    fi
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^# ]] && continue
+        inputs+=("$line")
+    done < "${inputs_file}"
 fi
 
 # From positional arguments
 if [[ "${#args[@]}" -gt 0 ]]; then
-  inputs+=("${args[@]}")
+    inputs+=("${args[@]}")
 fi
 
 # From stdin if none collected yet and stdin has data
 if [[ "${#inputs[@]}" -eq 0 && ! -t 0 ]]; then
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    [[ "$line" =~ ^# ]] && continue
-    inputs+=("$line")
-  done
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        [[ "$line" =~ ^# ]] && continue
+        inputs+=("$line")
+    done
 fi
 
 if [[ "${#inputs[@]}" -eq 0 ]]; then
-  echo "ERROR: No input paths provided. Use positional args, --inputs-file, or pipe via stdin." >&2
-  exit 1
+    echo "ERROR: No input paths provided. Use positional args, --inputs-file, or pipe via stdin." >&2
+    exit 1
 fi
 
 # Validate inputs and normalize to absolute paths if possible
 normalized_inputs=()
 for p in "${inputs[@]}"; do
-  # Trim whitespace
-  p_trim="$(printf "%s" "$p" | awk '{$1=$1};1')"
-  if [[ ! -d "${p_trim}" && ! -f "${p_trim}" ]]; then
-    echo "ERROR: Input path does not exist: ${p_trim}" >&2
-    exit 1
-  fi
-  if command -v readlink >/dev/null 2>&1; then
-    abs="$(readlink -f "${p_trim}" || echo "${p_trim}")"
-    normalized_inputs+=("${abs}")
-  else
-    normalized_inputs+=("${p_trim}")
-  fi
+    # Trim whitespace
+    p_trim="$(printf "%s" "$p" | awk '{$1=$1};1')"
+    if [[ ! -d "${p_trim}" && ! -f "${p_trim}" ]]; then
+        echo "ERROR: Input path does not exist: ${p_trim}" >&2
+        exit 1
+    fi
+    if command -v readlink > /dev/null 2>&1; then
+        abs="$(readlink -f "${p_trim}" || echo "${p_trim}")"
+        normalized_inputs+=("${abs}")
+    else
+        normalized_inputs+=("${p_trim}")
+    fi
 done
 
 num_inputs="${#normalized_inputs[@]}"
 
 if [[ "${num_inputs}" -lt 1 && "${force}" != "true" ]]; then
-  echo "ERROR: At least one input is required (use --force to bypass this check)." >&2
-  exit 1
+    echo "ERROR: At least one input is required (use --force to bypass this check)." >&2
+    exit 1
 fi
 
 if [[ -n "${max_nodes}" ]]; then
-  if [[ "${num_inputs}" -gt "${max_nodes}" ]]; then
-    echo "ERROR: Number of inputs (${num_inputs}) exceeds --max-nodes (${max_nodes})." >&2
-    exit 1
-  fi
+    if [[ "${num_inputs}" -gt "${max_nodes}" ]]; then
+        echo "ERROR: Number of inputs (${num_inputs}) exceeds --max-nodes (${max_nodes})." >&2
+        exit 1
+    fi
 fi
 
 # Prepare run directory
@@ -212,25 +216,26 @@ echo " - Command: ${cmd_txt}"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pbs_script="${script_dir}/nxreduce-multinode.sh"
 if [[ ! -f "${pbs_script}" ]]; then
-  echo "ERROR: PBS script not found at ${pbs_script}" >&2
-  exit 1
+    echo "ERROR: PBS script not found at ${pbs_script}" >&2
+    exit 1
 fi
 
 # Submit job; override select to match number of inputs; other resources can be overridden via flags
+# TODO: Seems like a lot of this is redundant with the PBS directives in the script
 qsub_out=$(qsub \
-  -l "select=${num_inputs}:system=${system}" \
-  -l "place=${place}" \
-  -l "filesystems=${filesystems}" \
-  -q "${queue}" \
-  -l "walltime=${walltime}" \
-  -A "${account}" \
-  -N "${name}" \
-  -v "RUN_DIR=${run_dir}" \
-  "${pbs_script}")
+    -l "select=${num_inputs}:system=${system}" \
+    -l "place=${place}" \
+    -l "filesystems=${filesystems}" \
+    -q "${queue}" \
+    -l "walltime=${walltime}" \
+    -A "${account}" \
+    -N "${name}" \
+    -v "RUN_DIR=${run_dir}" \
+    "${pbs_script}")
 
 if [[ -z "${qsub_out}" ]]; then
-  echo "ERROR: qsub did not return a job ID." >&2
-  exit 1
+    echo "ERROR: qsub did not return a job ID." >&2
+    exit 1
 fi
 
 job_id="$(echo "${qsub_out}" | awk '{print $1}')"
