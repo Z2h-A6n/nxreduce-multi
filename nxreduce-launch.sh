@@ -259,18 +259,8 @@ if [[ "${dry_run}" == "true" ]]; then
     exit 0
 fi
 
-# Submit job; override select to match number of inputs; other resources can be overridden via flags
-# This should run the same $qsub_cmd as generated before the dry-run output, not generate a new qsub command AI!
-qsub_out=$(qsub \
-    -l "select=${num_inputs}:system=${system}" \
-    -l "place=${place}" \
-    -l "filesystems=${filesystems}" \
-    -q "${queue}" \
-    -l "walltime=${walltime}" \
-    -A "${account}" \
-    -N "${name}" \
-    -v "RUN_DIR=${run_dir}" \
-    "${pbs_script}")
+# Submit job using the same qsub command that was constructed above
+qsub_out=$(eval "${qsub_cmd}")
 
 if [[ -z "${qsub_out}" ]]; then
     echo "ERROR: qsub did not return a job ID." >&2
