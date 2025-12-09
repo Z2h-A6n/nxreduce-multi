@@ -79,8 +79,8 @@ fi
 # Environment setup for each rank
 source /eagle/AXMAS-Reduction/sw/bin/nxsetup.sh
 
-# Read the base command (first line of CMD_FILE)
-CMD=$(head -n 1 "${CMD_FILE}")
+# Read the base command (first line of CMD_FILE) preserving spaces/backslashes
+IFS= read -r CMD < "${CMD_FILE}"
 
 # Prepare log file names
 base_name="$(basename "${input}")"
@@ -89,10 +89,17 @@ err_file="${LOGDIR}/${rank}-${base_name}.err"
 
 echo "Rank ${rank}: Starting command on input: ${input}" | tee -a "${out_file}"
 
-# Execute the command, appending the input path as the final argument.
-# Use bash -lc to honor any shell expansions contained in CMD.
-# Note: quoting ensures the input path is treated as a single argument.
-bash -lc "${CMD} \"${input}\"" >>"${out_file}" 2>>"${err_file}"
+# Safely inject input path into the command. If '{}' is present, replace it.
+# Otherwise, append the input path as a final argument.
+escaped_input=$(printf '%q' "${input}")
+if [[ "${CMD}" == *"{}"* ]]; then
+  CMD_RESOLVED="${CMD//\{\}/$escaped_input}"
+else
+  CMD_RESOLVED="${CMD} ${escaped_input}"
+fi
+
+# Execute the resolved command, honoring any shell expansions contained in CMD.
+bash -lc "${CMD_RESOLVED}" >>"${out_file}" 2>>"${err_file}"
 status=$?
 
 echo "Rank ${rank}: Finished with exit code ${status}" | tee -a "${out_file}"

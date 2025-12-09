@@ -16,7 +16,9 @@
 #
 # Notes:
 #   - Ensure you run this from a directory on a shared filesystem (home/eagle) so the compute nodes can access RUN_DIR.
-#   - The command string provided via --cmd should NOT include the final input path; it will be appended by the worker.
+#   - The command string provided via --cmd can include '{}' as a placeholder for the input path. If '{}' is not present,
+#     the input path will be appended as the final argument by the worker. Avoid quoting '{}' in cmd.txt; the worker will
+#     safely escape the path.
 #   - Queue constraints: each queue defines a minimum and maximum number of nodes. Requests below the minimum will be
 #     adjusted up to the minimum (unless --force is not used, in which case it's an error). Requests above the maximum
 #     are an error.
@@ -244,6 +246,7 @@ printf "%s\n" "${normalized_inputs[@]}" > "${inputs_txt}"
 
 # Write cmd.txt (single line with the base command)
 cmd_txt="${run_dir}/cmd.txt"
+# What's the point of the trailing newline written to $cmd_txt AI?
 printf "%s\n" "${cmd}" > "${cmd_txt}"
 
 # Generate a single source-of-truth mpiexec script that both dry-run and PBS job will use
