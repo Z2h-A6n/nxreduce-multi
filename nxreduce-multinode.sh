@@ -29,8 +29,6 @@ CMD_FILE="${RUN_DIR}/cmd.txt"
 LOGDIR="${RUN_DIR}/logs"
 STATUSDIR="${RUN_DIR}/status"
 
-mkdir -p "${LOGDIR}" "${STATUSDIR}"
-
 if [[ ! -f "${INPUTS_FILE}" ]]; then
   echo "ERROR: inputs file not found at ${INPUTS_FILE}"
   exit 1
@@ -41,14 +39,13 @@ if [[ ! -f "${CMD_FILE}" ]]; then
   exit 1
 fi
 
-# Source environment on the head node (each worker will also source this)
-source /eagle/AXMAS-Reduction/sw/bin/nxsetup.sh
-
 NUM_TASKS=$(wc -l < "${INPUTS_FILE}")
 if [[ "${NUM_TASKS}" -le 0 ]]; then
   echo "ERROR: No inputs found in ${INPUTS_FILE}"
   exit 1
 fi
+
+mkdir -p "${LOGDIR}" "${STATUSDIR}"
 
 # Create a per-rank worker script that will run on each node
 WORKER="${RUN_DIR}/worker.sh"
