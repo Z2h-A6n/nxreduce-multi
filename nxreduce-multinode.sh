@@ -20,8 +20,8 @@ fi
 
 # The launcher must pass RUN_DIR (shared filesystem path) via qsub -v RUN_DIR=<path>
 if [[ -z "${RUN_DIR:-}" ]]; then
-  echo "ERROR: RUN_DIR is not set. Submit this script via nxreduce-launch.sh which will prepare RUN_DIR and pass it to qsub."
-  exit 1
+    echo "ERROR: RUN_DIR is not set. Submit this script via nxreduce-launch.sh which will prepare RUN_DIR and pass it to qsub."
+    exit 1
 fi
 
 INPUTS_FILE="${RUN_DIR}/inputs.txt"
@@ -30,19 +30,19 @@ LOGDIR="${RUN_DIR}/logs"
 STATUSDIR="${RUN_DIR}/status"
 
 if [[ ! -f "${INPUTS_FILE}" ]]; then
-  echo "ERROR: inputs file not found at ${INPUTS_FILE}"
-  exit 1
+    echo "ERROR: inputs file not found at ${INPUTS_FILE}"
+    exit 1
 fi
 
 if [[ ! -f "${CMD_FILE}" ]]; then
-  echo "ERROR: command file not found at ${CMD_FILE}"
-  exit 1
+    echo "ERROR: command file not found at ${CMD_FILE}"
+    exit 1
 fi
 
 NUM_TASKS=$(wc -l < "${INPUTS_FILE}")
 if [[ "${NUM_TASKS}" -le 0 ]]; then
-  echo "ERROR: No inputs found in ${INPUTS_FILE}"
-  exit 1
+    echo "ERROR: No inputs found in ${INPUTS_FILE}"
+    exit 1
 fi
 
 mkdir -p "${LOGDIR}" "${STATUSDIR}"
@@ -52,7 +52,7 @@ mkdir -p "${LOGDIR}" "${STATUSDIR}"
 # - the `rank` variable is set to the MPI rank, with several levels of fallback
 #   to environment variables defined in different MPI implementations.
 WORKER="${RUN_DIR}/worker.sh"
-cat > "${WORKER}" <<'EOF'
+cat > "${WORKER}" << 'EOF'
 #!/bin/bash -l
 set -euo pipefail
 
@@ -113,11 +113,11 @@ chmod +x "${WORKER}"
 # Use a single source of truth for the mpiexec command if available
 MPIEXEC_SCRIPT="${RUN_DIR}/mpiexec.sh"
 if [[ -x "${MPIEXEC_SCRIPT}" ]]; then
-  echo "Dispatching tasks via mpiexec script: ${MPIEXEC_SCRIPT}"
-  "${MPIEXEC_SCRIPT}"
+    echo "Dispatching tasks via mpiexec script: ${MPIEXEC_SCRIPT}"
+    "${MPIEXEC_SCRIPT}"
 else
-  echo "ERROR: mpiexec script not found or not executable at ${MPIEXEC_SCRIPT}."
-  exit 1
+    echo "ERROR: mpiexec script not found or not executable at ${MPIEXEC_SCRIPT}."
+    exit 1
 fi
 
 # Summarize results
@@ -125,13 +125,13 @@ echo "Aggregating task statuses..."
 fail_count=0
 success_count=0
 for f in "${STATUSDIR}"/rank-*.exitcode; do
-  [[ -e "$f" ]] || continue
-  code=$(cat "$f" || echo 1)
-  if [[ "$code" == "0" ]]; then
-    success_count=$((success_count+1))
-  else
-    fail_count=$((fail_count+1))
-  fi
+    [[ -e "$f" ]] || continue
+    code=$(cat "$f" || echo 1)
+    if [[ "$code" == "0" ]]; then
+        success_count=$((success_count + 1))
+    else
+        fail_count=$((fail_count + 1))
+    fi
 done
 
 echo "Summary: ${success_count} succeeded, ${fail_count} failed (of ${NUM_TASKS} requested)."
