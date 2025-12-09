@@ -4,7 +4,7 @@
 # - Validates inputs.
 # - Writes an inputs.txt and cmd.txt into a run directory on a shared filesystem.
 # - Submits nxreduce-multinode.sh to PBS with a node count equal to number of inputs.
-#
+
 # Optional flags:
 #   --force                 Proceed even if only 1 input is provided.
 #   --queue Q               PBS queue name (default: debug)
@@ -122,15 +122,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${cmd}" ]]; then
-    # TODO: the `\` seems like a problem (or at least unnecessary). Remove it?
-    echo "ERROR: --cmd 'your_command and options (without the input path)\' is required." >&2
+    echo "ERROR: --cmd 'your_command and options (without the input path)' is required." >&2
     exit 1
 fi
 
-# Collect inputs
+# Collect inputs ...
 inputs=()
 
-# From file, if provided
+# ... from file, if provided
 if [[ -n "${inputs_file}" ]]; then
     if [[ ! -f "${inputs_file}" ]]; then
         echo "ERROR: Inputs file not found: ${inputs_file}" >&2
@@ -143,13 +142,13 @@ if [[ -n "${inputs_file}" ]]; then
     done < "${inputs_file}"
 fi
 
-# From positional arguments
+# ... from positional arguments
 if [[ "${#args[@]}" -gt 0 ]]; then
     inputs+=("${args[@]}")
 fi
 
-# From stdin if none collected yet and stdin has data
-if [[ "${#inputs[@]}" -eq 0 && ! -t 0 ]]; then
+# ... from stdin if stdin has data
+if [[ ! -t 0 ]]; then
     while IFS= read -r line; do
         [[ -z "$line" ]] && continue
         [[ "$line" =~ ^# ]] && continue
@@ -261,7 +260,7 @@ if [[ "${dry_run}" == "true" ]]; then
 fi
 
 # Submit job; override select to match number of inputs; other resources can be overridden via flags
-# TODO: Seems like a lot of this is redundant with the PBS directives in the script
+# This should run the same $qsub_cmd as generated before the dry-run output, not generate a new qsub command AI!
 qsub_out=$(qsub \
     -l "select=${num_inputs}:system=${system}" \
     -l "place=${place}" \
