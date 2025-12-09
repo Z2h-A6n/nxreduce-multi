@@ -242,13 +242,22 @@ if [[ ! -f "${pbs_script}" ]]; then
     exit 1
 fi
 
-# Build the qsub command that would be executed
-qsub_cmd="qsub -l \"select=${num_inputs}:system=${system}\" -l \"place=${place}\" -l \"filesystems=${filesystems}\" -q \"${queue}\" -l \"walltime=${walltime}\" -A \"${account}\" -N \"${name}\" -v \"RUN_DIR=${run_dir}\" \"${pbs_script}\""
+# Build the qsub command (as an array) that would be executed
+qsub_cmd=( qsub )
+qsub_cmd+=( -l "select=${num_inputs}:system=${system}" )
+qsub_cmd+=( -l "place=${place}" )
+qsub_cmd+=( -l "filesystems=${filesystems}" )
+qsub_cmd+=( -q "${queue}" )
+qsub_cmd+=( -l "walltime=${walltime}" )
+qsub_cmd+=( -A "${account}" )
+qsub_cmd+=( -N "${name}" )
+qsub_cmd+=( -v "RUN_DIR=${run_dir}" )
+qsub_cmd+=( "${pbs_script}" )
 
 # If dry-run, print planned commands and paths, then exit without submitting
 if [[ "${dry_run}" == "true" ]]; then
     echo "DRY-RUN: would submit the following qsub command:"
-    echo "${qsub_cmd}"
+    printf '%q ' "${qsub_cmd[@]}"; echo
     echo "DRY-RUN: paths to review:"
     echo " - PBS job script: ${pbs_script}"
     echo " - RUN_DIR: ${run_dir}"
@@ -263,7 +272,7 @@ if [[ "${dry_run}" == "true" ]]; then
 fi
 
 # Submit job using the same qsub command that was constructed above
-qsub_out=$(eval "${qsub_cmd}")
+qsub_out=$( "${qsub_cmd[@]}" )
 
 if [[ -z "${qsub_out}" ]]; then
     echo "ERROR: qsub did not return a job ID." >&2
