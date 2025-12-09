@@ -210,7 +210,7 @@ done
 
 num_inputs="${#normalized_inputs[@]}"
 
-if [[ "${num_inputs}" -lt 1 && "${force}" != "true" ]]; then
+if [[ "${num_inputs}" -lt 1 ]]; then
     echo "ERROR: At least one input is required (use --force to bypass this check)." >&2
     exit 1
 fi
