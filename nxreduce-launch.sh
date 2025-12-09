@@ -88,10 +88,19 @@ set_queue_limits() {
     esac
 }
 
-# It seems like this relies on hard-coded line numbers, which is not robust to changes. It should be refactored AI!
-# - Instead of hard coded line numbers, just print the first block of comment lines in this file ($0). I.e., skip the first line (#!/bin/bash), then print all lines up to the first line that isn't a comment.
 print_usage() {
-    sed -n '1,100p' "$0" | sed -n '1,60p' | grep -E '^(#|\s*$)' | sed 's/^#\s*//'
+    awk '
+    NR==1 { next }  # skip shebang
+    {
+        if ($0 ~ /^#/) {
+            sub(/^#\s?/, "", $0)
+            print $0
+        } else if ($0 ~ /^[[:space:]]*$/) {
+            print ""
+        } else {
+            exit
+        }
+    }' "$0"
 }
 
 # Parse arguments
