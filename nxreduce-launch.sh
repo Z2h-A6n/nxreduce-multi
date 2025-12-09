@@ -3,11 +3,11 @@
 # - Accepts a list of input paths via args, a file, or stdin.
 # - Validates inputs.
 # - Writes an inputs.txt and cmd.txt into a run directory on a shared filesystem.
-# - Submits nxreduce-multinode.sh to PBS with a node count equal to number of inputs.
-
+# - Submits nxreduce-multinode.sh to PBS with a node count based on queue limits and number of inputs.
+#
 # Optional flags:
-#   --force                 Proceed even if only 1 input is provided.
-#   --queue Q               PBS queue name (default: debug)
+#   --force                 Proceed even if inputs are fewer than the queue's minimum node count.
+#   --queue Q               PBS queue name (default: debug). Queue selection sets min/max node limits.
 #   --walltime HH:MM:SS     Walltime (default: 01:00:00)
 #   --account A             Project/account (default: AXMAS-Reduction)
 #   --name NAME             PBS job name (default: nxreduce-multinode)
@@ -15,12 +15,14 @@
 #   --system S              System resource (default: polaris)
 #   --filesystems FS        Filesystems resource (default: home:eagle)
 #   --runs-dir DIR          Base directory to store run artifacts (default: $PWD/nxreduce_runs)
-#   --max-nodes N           Cap the number of nodes to N (fail if inputs > N)
 #   --dry-run               Prepare RUN_DIR and print planned commands/paths, but do NOT submit the job.
 #
-# Note:
+# Notes:
 #   - Ensure you run this from a directory on a shared filesystem (home/eagle) so the compute nodes can access RUN_DIR.
 #   - The command string provided via --cmd should NOT include the final input path; it will be appended by the worker.
+#   - Queue constraints: each queue defines a minimum and maximum number of nodes. Requests below the minimum will be
+#     adjusted up to the minimum (unless --force is not used, in which case it's an error). Requests above the maximum
+#     are an error.
 
 set -euo pipefail
 
@@ -35,12 +37,38 @@ place="scatter"
 system="polaris"
 filesystems="home:eagle"
 runs_dir="${PWD}/nxreduce_runs"
-max_nodes=""
 dry_run="false"
+
+# Per-queue limits (set via set_queue_limits)
+min_nodes=""
+max_nodes=""
+
+# Helper: set per-queue node limits. Replace placeholder values with real limits for your PBS configuration.
+set_queue_limits() {
+    local q="${1:-}"
+    case "${q}" in
+        debug)
+            min_nodes=1
+            max_nodes=4
+            ;;
+        short)
+            min_nodes=2
+            max_nodes=32
+            ;;
+        regular)
+            min_nodes=4
+            max_nodes=128
+            ;;
+        *)
+            echo "ERROR: Unsupported or unknown queue: '${q}'. Please choose a valid queue." >&2
+            exit 1
+            ;;
+    esac
+}
 
 # TODO: Make this more robust by relying on something other than hard-coded line numbers.
 print_usage() {
-    sed -n '1,100p' "$0" | sed -n '1,50p' | grep -E '^(#|\s*$)' | sed 's/^#\s*//'
+    sed -n '1,100p' "$0" | sed -n '1,60p' | grep -E '^(#|\s*$)' | sed 's/^#\s*//'
 }
 
 # Parse arguments
@@ -90,10 +118,6 @@ while [[ $# -gt 0 ]]; do
             shift
             runs_dir="${1:-}"
             ;;
-        --max-nodes)
-            shift
-            max_nodes="${1:-}"
-            ;;
         --dry-run)
             dry_run="true"
             ;;
@@ -120,6 +144,9 @@ while [[ $# -gt 0 ]]; do
     esac
     shift || true
 done
+
+# Validate queue and set limits early
+set_queue_limits "${queue}"
 
 if [[ -z "${cmd}" ]]; then
     echo "ERROR: --cmd 'your_command and options (without the input path)' is required." >&2
@@ -176,7 +203,7 @@ for p in "${inputs[@]}"; do
     elif [[ "${p_trim}" = /* ]]; then
         abs="${p_trim}"
     else
-        abs="$(cd "$(dirname "${p_trim}")" && pwd -P)/$(basename "${p_trim}")" 
+        abs="$(cd "$(dirname "${p_trim}")" && pwd -P)/$(basename "${p_trim}")"
     fi
     normalized_inputs+=("${abs}")
 done
@@ -188,11 +215,23 @@ if [[ "${num_inputs}" -lt 1 && "${force}" != "true" ]]; then
     exit 1
 fi
 
-if [[ -n "${max_nodes}" ]]; then
-    if [[ "${num_inputs}" -gt "${max_nodes}" ]]; then
-        echo "ERROR: Number of inputs (${num_inputs}) exceeds --max-nodes (${max_nodes})." >&2
-        exit 1
-    fi
+# Enforce queue-specific limits
+# Too many inputs for this queue?
+if (( num_inputs > max_nodes )); then
+    echo "ERROR: Number of inputs (${num_inputs}) exceeds queue '${queue}' max-nodes (${max_nodes})." >&2
+    exit 1
+fi
+
+# Fewer inputs than the queue's minimum? Require --force to proceed.
+if (( num_inputs < min_nodes )) && [[ "${force}" != "true" ]]; then
+    echo "ERROR: Number of inputs (${num_inputs}) is below queue '${queue}' min-nodes (${min_nodes}). Use --force to proceed anyway." >&2
+    exit 1
+fi
+
+# Compute requested nodes: at least min_nodes, otherwise num_inputs
+requested_nodes="${num_inputs}"
+if (( num_inputs < min_nodes )); then
+    requested_nodes="${min_nodes}"
 fi
 
 # Prepare run directory
@@ -244,7 +283,7 @@ fi
 
 # Build the qsub command (as an array) that would be executed
 qsub_cmd=( qsub )
-qsub_cmd+=( -l "select=${num_inputs}:system=${system}" )
+qsub_cmd+=( -l "select=${requested_nodes}:system=${system}" )
 qsub_cmd+=( -l "place=${place}" )
 qsub_cmd+=( -l "filesystems=${filesystems}" )
 qsub_cmd+=( -q "${queue}" )
@@ -256,6 +295,8 @@ qsub_cmd+=( "${pbs_script}" )
 
 # If dry-run, print planned commands and paths, then exit without submitting
 if [[ "${dry_run}" == "true" ]]; then
+    echo "DRY-RUN: queue '${queue}' limits: min_nodes=${min_nodes}, max_nodes=${max_nodes}"
+    echo "DRY-RUN: inputs=${num_inputs}, requested_nodes=${requested_nodes}"
     echo "DRY-RUN: would submit the following qsub command:"
     printf '%q ' "${qsub_cmd[@]}"; printf '\n'
     echo "DRY-RUN: paths to review:"
@@ -281,6 +322,8 @@ fi
 
 job_id="$(echo "${qsub_out}" | awk '{print $1}')"
 echo "Submitted job ${job_id}"
+echo "Queue '${queue}' limits: min_nodes=${min_nodes}, max_nodes=${max_nodes}"
+echo "Requested nodes: ${requested_nodes}"
 echo "Logs will be written to: ${run_dir}/logs"
 echo "Status files will be in: ${run_dir}/status"
 echo "Use 'qstat -f ${job_id}' to monitor; job will start from ${pbs_script}."
