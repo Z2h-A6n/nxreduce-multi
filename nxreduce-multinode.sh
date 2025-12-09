@@ -12,6 +12,12 @@ set -euo pipefail
 
 echo "Running job $PBS_JOBNAME (ID: $PBS_JOBID) by user $USER in $PBS_QUEUE queue, starting $(date '+%Y/%m/%d %H:%M:%S %Z')"
 
+# cd to the submission directory if set. Helps avoid errors if relative paths
+# slip through the input processing.
+if [[ -n "${PBS_O_WORKDIR:-}" ]]; then
+    cd "${PBS_O_WORKDIR}"
+fi
+
 # The launcher must pass RUN_DIR (shared filesystem path) via qsub -v RUN_DIR=<path>
 if [[ -z "${RUN_DIR:-}" ]]; then
   echo "ERROR: RUN_DIR is not set. Submit this script via nxreduce-launch.sh which will prepare RUN_DIR and pass it to qsub."
