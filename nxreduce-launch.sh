@@ -47,17 +47,31 @@ max_nodes=""
 set_queue_limits() {
     local q="${1:-}"
     case "${q}" in
-        debug)
+        'debug')
             min_nodes=1
-            max_nodes=4
+            max_nodes=2
             ;;
-        short)
-            min_nodes=2
-            max_nodes=32
+        'debug-scaling')
+            min_nodes=1
+            max_nodes=10
             ;;
-        regular)
-            min_nodes=4
-            max_nodes=128
+        'preemptable')
+            min_nodes=1
+            max_nodes=10
+        'prod')
+            # max_nodes is set artificially low to avoid submitting huge jobs
+            # without being sure of it. Use prod-large for large jobs.
+            min_nodes=10
+            max_nodes=50
+            ;;
+        'prod-large')
+            # This isn't a real queue, it's just a way of bypassing the
+            # artificially-low max_nodes set for 'prod' above.
+            # max_nodes is set lower than total node count to avoid issues with
+            # node downtime.
+            queue='prod'
+            min_nodes=10
+            max_nodes=476
             ;;
         *)
             echo "ERROR: Unsupported or unknown queue: '${q}'. Please choose a valid queue." >&2
@@ -219,6 +233,9 @@ fi
 # Too many inputs for this queue?
 if (( num_inputs > max_nodes )); then
     echo "ERROR: Number of inputs (${num_inputs}) exceeds queue '${queue}' max-nodes (${max_nodes})." >&2
+    if [[ "${queue}" == "prod" ]]; then
+        echo "       Use virtual queue 'prod-large' to submit large jobs." >&2
+    fi
     exit 1
 fi
 
