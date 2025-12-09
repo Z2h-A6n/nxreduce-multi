@@ -1,13 +1,24 @@
 #!/bin/bash
 # Launcher for multi-node nxreduce job submission.
+#
+# Usage:
+#   nxreduce-launch.sh [OPTIONS] --cmd CMD --inputs-file FILE
+#   nxreduce-launch.sh [OPTIONS] --cmd CMD -- INPUT2 [INPUT2 [...]]
+#   nxreduce-launch.sh [OPTIONS] --cmd CMD < FILE
+#
 # - Accepts a list of input paths via args, a file, or stdin.
 # - Validates inputs.
 # - Writes an inputs.txt and cmd.txt into a run directory on a shared filesystem.
 # - Submits nxreduce-multinode.sh to PBS with a node count based on queue limits and number of inputs.
+# - Allows --dry-run mode for submission planning.
+#
+# Required flags:
+#   --cmd                   The nxreduce command line to run, with the input data path represented by '{}', see below.
 #
 # Optional flags:
+#   --inputs-file PATH      File listing input data paths, one per line.
 #   --force                 Proceed even if inputs are fewer than the queue's minimum node count.
-#   --queue Q               PBS queue name (default: debug-scaling). Queue selection sets min/max node limits.
+#   --queue QUEUE           PBS queue name (default: debug-scaling). Queue selection sets min/max node limits.
 #   --walltime HH:MM:SS     Walltime (default: 01:00:00)
 #   --account A             Project/account (default: AXMAS-Reduction)
 #   --name NAME             PBS job name (default: nxreduce-multinode)
@@ -77,7 +88,8 @@ set_queue_limits() {
     esac
 }
 
-# TODO: Make this more robust by relying on something other than hard-coded line numbers.
+# It seems like this relies on hard-coded line numbers, which is not robust to changes. It should be refactored AI!
+# - Instead of hard coded line numbers, just print the first block of comment lines in this file ($0). I.e., skip the first line (#!/bin/bash), then print all lines up to the first line that isn't a comment.
 print_usage() {
     sed -n '1,100p' "$0" | sed -n '1,60p' | grep -E '^(#|\s*$)' | sed 's/^#\s*//'
 }
