@@ -54,6 +54,7 @@ set_queue_limits() {
         'preemptable')
             min_nodes=1
             max_nodes=10
+            ;;
         'prod')
             # max_nodes is set artificially low to avoid submitting huge jobs
             # without being sure of it. Use prod-large for large jobs.
