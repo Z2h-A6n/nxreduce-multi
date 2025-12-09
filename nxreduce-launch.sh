@@ -170,12 +170,15 @@ for p in "${inputs[@]}"; do
         echo "ERROR: Input path does not exist: ${p_trim}" >&2
         exit 1
     fi
+    # Try to resolve all paths to absolute paths
     if command -v readlink > /dev/null 2>&1; then
         abs="$(readlink -f "${p_trim}" || echo "${p_trim}")"
-        normalized_inputs+=("${abs}")
+    elif [[ "${p_trim}" = /* ]]; then
+        abs="${p_trim}"
     else
-        normalized_inputs+=("${p_trim}")
+        abs="$(cd "$(dirname "${p_trim}")" && pwd -P)/$(basename "${p_trim}")" 
     fi
+    normalized_inputs+=("${abs}")
 done
 
 num_inputs="${#normalized_inputs[@]}"
