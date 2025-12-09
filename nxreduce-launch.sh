@@ -4,14 +4,7 @@
 # - Validates inputs.
 # - Writes an inputs.txt and cmd.txt into a run directory on a shared filesystem.
 # - Submits nxreduce-multinode.sh to PBS with a node count equal to number of inputs.
-
-# TODO: Write proper nxreduce examples
-# Usage examples:
-#   nxreduce-launch.sh --cmd 'nxreduce --server myserver' /path/to/input1 /path/to/input2
-#   nxreduce-launch.sh --cmd 'nxreduce --server myserver' --inputs-file inputs.txt
-#   cat inputs.txt | nxreduce-launch.sh --cmd 'nxreduce --server myserver'
-
-# TODO: Make some of these hard-coded, change some defaults, etc.
+#
 # Optional flags:
 #   --force                 Proceed even if only 1 input is provided.
 #   --queue Q               PBS queue name (default: debug)
@@ -23,7 +16,8 @@
 #   --filesystems FS        Filesystems resource (default: home:eagle)
 #   --runs-dir DIR          Base directory to store run artifacts (default: $PWD/nxreduce_runs)
 #   --max-nodes N           Cap the number of nodes to N (fail if inputs > N)
-
+#   --dry-run               Prepare RUN_DIR and print planned commands/paths, but do NOT submit the job.
+#
 # Note:
 #   - Ensure you run this from a directory on a shared filesystem (home/eagle) so the compute nodes can access RUN_DIR.
 #   - The command string provided via --cmd should NOT include the final input path; it will be appended by the worker.
@@ -42,6 +36,7 @@ system="polaris"
 filesystems="home:eagle"
 runs_dir="${PWD}/nxreduce_runs"
 max_nodes=""
+dry_run="false"
 
 # TODO: Make this more robust by relying on something other than hard-coded line numbers.
 print_usage() {
@@ -98,6 +93,9 @@ while [[ $# -gt 0 ]]; do
         --max-nodes)
             shift
             max_nodes="${1:-}"
+            ;;
+        --dry-run)
+            dry_run="true"
             ;;
         -h | --help)
             print_usage
@@ -218,6 +216,27 @@ pbs_script="${script_dir}/nxreduce-multinode.sh"
 if [[ ! -f "${pbs_script}" ]]; then
     echo "ERROR: PBS script not found at ${pbs_script}" >&2
     exit 1
+fi
+
+# Build the qsub command that would be executed
+qsub_cmd="qsub -l \"select=${num_inputs}:system=${system}\" -l \"place=${place}\" -l \"filesystems=${filesystems}\" -q \"${queue}\" -l \"walltime=${walltime}\" -A \"${account}\" -N \"${name}\" -v \"RUN_DIR=${run_dir}\" \"${pbs_script}\""
+
+# If dry-run, print planned commands and paths, then exit without submitting
+if [[ "${dry_run}" == "true" ]]; then
+    echo "DRY-RUN: would submit the following qsub command:"
+    echo "${qsub_cmd}"
+    echo "DRY-RUN: paths to review:"
+    echo " - PBS job script: ${pbs_script}"
+    echo " - RUN_DIR: ${run_dir}"
+    echo " - inputs.txt: ${inputs_txt}"
+    echo " - cmd.txt: ${cmd_txt}"
+    echo " - planned worker script path (created at job start): ${run_dir}/worker.sh"
+    echo " - planned logs directory: ${run_dir}/logs"
+    echo " - planned status directory: ${run_dir}/status"
+    echo "DRY-RUN: planned mpiexec command:"
+    echo "mpiexec -n ${num_inputs} -ppn 1 \"${run_dir}/worker.sh\" \"${inputs_txt}\" \"${cmd_txt}\" \"${run_dir}/logs\" \"${run_dir}/status\""
+    echo "Dry-run complete. No job was submitted."
+    exit 0
 fi
 
 # Submit job; override select to match number of inputs; other resources can be overridden via flags
