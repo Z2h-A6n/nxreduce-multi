@@ -89,6 +89,7 @@ set_queue_limits() {
 }
 
 print_usage() {
+    # Print the first comment block as the usage/help message.
     awk '
     NR==1 { next }  # skip shebang
     {
