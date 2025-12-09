@@ -7,11 +7,11 @@
 #
 # Optional flags:
 #   --force                 Proceed even if inputs are fewer than the queue's minimum node count.
-#   --queue Q               PBS queue name (default: debug). Queue selection sets min/max node limits.
+#   --queue Q               PBS queue name (default: debug-scaling). Queue selection sets min/max node limits.
 #   --walltime HH:MM:SS     Walltime (default: 01:00:00)
 #   --account A             Project/account (default: AXMAS-Reduction)
 #   --name NAME             PBS job name (default: nxreduce-multinode)
-#   --runs-dir DIR          Base directory to store run artifacts (default: $PWD/nxreduce_runs)
+#   --runs-dir DIR          Base directory to store run artifacts (default: /eagle/AXMAS-Reductio/nxreduce_runs)
 #   --dry-run               Prepare RUN_DIR and print planned commands/paths, but do NOT submit the job.
 #
 # Notes:
@@ -28,7 +28,7 @@ set -euo pipefail
 cmd=""
 inputs_file=""
 force="false"
-queue="debug"
+queue="debug-scaling"
 walltime="01:00:00"
 account="AXMAS-Reduction"
 name="nxreduce-multinode"
