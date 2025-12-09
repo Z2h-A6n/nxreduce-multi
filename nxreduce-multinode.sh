@@ -113,9 +113,8 @@ if [[ -x "${MPIEXEC_SCRIPT}" ]]; then
   echo "Dispatching tasks via mpiexec script: ${MPIEXEC_SCRIPT}"
   "${MPIEXEC_SCRIPT}"
 else
-  echo "mpiexec script not found at ${MPIEXEC_SCRIPT}; constructing inline mpiexec command..."
-  echo "Dispatching ${NUM_TASKS} tasks (one per node) via mpiexec..."
-  mpiexec -n "${NUM_TASKS}" -ppn 1 "${WORKER}" "${INPUTS_FILE}" "${CMD_FILE}" "${LOGDIR}" "${STATUSDIR}"
+  echo "ERROR: mpiexec script not found or not executable at ${MPIEXEC_SCRIPT}."
+  exit 1
 fi
 
 # Summarize results
