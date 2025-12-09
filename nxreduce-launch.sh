@@ -11,9 +11,6 @@
 #   --walltime HH:MM:SS     Walltime (default: 01:00:00)
 #   --account A             Project/account (default: AXMAS-Reduction)
 #   --name NAME             PBS job name (default: nxreduce-multinode)
-#   --place P               Placement (default: scatter)
-#   --system S              System resource (default: polaris)
-#   --filesystems FS        Filesystems resource (default: home:eagle)
 #   --runs-dir DIR          Base directory to store run artifacts (default: $PWD/nxreduce_runs)
 #   --dry-run               Prepare RUN_DIR and print planned commands/paths, but do NOT submit the job.
 #
@@ -33,10 +30,7 @@ queue="debug"
 walltime="01:00:00"
 account="AXMAS-Reduction"
 name="nxreduce-multinode"
-place="scatter"
-system="polaris"
-filesystems="home:eagle"
-runs_dir="${PWD}/nxreduce_runs"
+runs_dir="/eagle/AXMAS-Reduction/nxreduce_runs"
 dry_run="false"
 
 # Per-queue limits (set via set_queue_limits)
@@ -115,18 +109,6 @@ while [[ $# -gt 0 ]]; do
         --name)
             shift
             name="${1:-}"
-            ;;
-        --place)
-            shift
-            place="${1:-}"
-            ;;
-        --system)
-            shift
-            system="${1:-}"
-            ;;
-        --filesystems)
-            shift
-            filesystems="${1:-}"
             ;;
         --runs-dir)
             shift
@@ -300,9 +282,7 @@ fi
 
 # Build the qsub command (as an array) that would be executed
 qsub_cmd=( qsub )
-qsub_cmd+=( -l "select=${requested_nodes}:system=${system}" )
-qsub_cmd+=( -l "place=${place}" )
-qsub_cmd+=( -l "filesystems=${filesystems}" )
+qsub_cmd+=( -l "select=${requested_nodes}" )
 qsub_cmd+=( -q "${queue}" )
 qsub_cmd+=( -l "walltime=${walltime}" )
 qsub_cmd+=( -A "${account}" )
@@ -325,6 +305,7 @@ if [[ "${dry_run}" == "true" ]]; then
     echo " - planned logs directory: ${run_dir}/logs"
     echo " - planned status directory: ${run_dir}/status"
     echo " - mpiexec script: ${mpiexec_script}"
+    echo "This was a dry run, no job was submitted." > "${run_dir}/DRY_RUN.txt"
     echo "Dry-run complete. No job was submitted."
     exit 0
 fi
