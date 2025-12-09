@@ -22,12 +22,7 @@
 
 echo "Running job $PBS_JOBNAME (ID: $PBS_JOBID) by user $USER in $PBS_QUEUE queue, starting $(date '+%Y/%m/%d %H:%M:%S %Z')"
 
-# NOTE: The qsub command should include
-# '-N nxrefine-{cpu}' or similar
-# '-o {cpu_log}'
-# '-q preemptable' (probably)
-
 source /eagle/AXMAS-Reduction/sw/bin/nxsetup.sh
-<NXSERVER>
+# TODO: Replace with actual nxreduce <NXSERVER>
 
 echo "Finished job $PBS_JOBID at $(date '+%Y/%m/%d %H:%M:%S %Z')"
