@@ -187,6 +187,14 @@ if [[ "${#inputs[@]}" -eq 0 ]]; then
     exit 1
 fi
 
+# Locate PBS script (assumed to be alongside this launcher)
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+pbs_script="${script_dir}/nxreduce-multinode.sh"
+if [[ ! -f "${pbs_script}" ]]; then
+    echo "ERROR: PBS script not found at ${pbs_script}" >&2
+    exit 1
+fi
+
 # Validate inputs and normalize to absolute paths if possible
 normalized_inputs=()
 for p in "${inputs[@]}"; do
@@ -274,14 +282,6 @@ echo "Prepared run directory: ${run_dir}"
 echo " - Inputs: ${inputs_txt} (${num_inputs} items)"
 echo " - Command: ${cmd_txt}"
 echo " - mpiexec script: ${mpiexec_script}"
-
-# Locate PBS script (assumed to be alongside this launcher)
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-pbs_script="${script_dir}/nxreduce-multinode.sh"
-if [[ ! -f "${pbs_script}" ]]; then
-    echo "ERROR: PBS script not found at ${pbs_script}" >&2
-    exit 1
-fi
 
 # Build the qsub command (as an array) that would be executed
 qsub_cmd=( qsub )
