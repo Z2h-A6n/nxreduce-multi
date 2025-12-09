@@ -246,7 +246,6 @@ printf "%s\n" "${normalized_inputs[@]}" > "${inputs_txt}"
 
 # Write cmd.txt (single line with the base command)
 cmd_txt="${run_dir}/cmd.txt"
-# What's the point of the trailing newline written to $cmd_txt AI?
 printf "%s\n" "${cmd}" > "${cmd_txt}"
 
 # Generate a single source-of-truth mpiexec script that both dry-run and PBS job will use
