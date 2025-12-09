@@ -97,9 +97,16 @@ EOF
 
 chmod +x "${WORKER}"
 
-# Launch one rank per node
-echo "Dispatching ${NUM_TASKS} tasks (one per node) via mpiexec..."
-mpiexec -n "${NUM_TASKS}" -ppn 1 "${WORKER}" "${INPUTS_FILE}" "${CMD_FILE}" "${LOGDIR}" "${STATUSDIR}"
+# Use a single source of truth for the mpiexec command if available
+MPIEXEC_SCRIPT="${RUN_DIR}/mpiexec.sh"
+if [[ -x "${MPIEXEC_SCRIPT}" ]]; then
+  echo "Dispatching tasks via mpiexec script: ${MPIEXEC_SCRIPT}"
+  "${MPIEXEC_SCRIPT}"
+else
+  echo "mpiexec script not found at ${MPIEXEC_SCRIPT}; constructing inline mpiexec command..."
+  echo "Dispatching ${NUM_TASKS} tasks (one per node) via mpiexec..."
+  mpiexec -n "${NUM_TASKS}" -ppn 1 "${WORKER}" "${INPUTS_FILE}" "${CMD_FILE}" "${LOGDIR}" "${STATUSDIR}"
+fi
 
 # Summarize results
 echo "Aggregating task statuses..."
